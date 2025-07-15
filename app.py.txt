@@ -1,0 +1,98 @@
+
+import smtplib
+from flask import Flask, render_template_string, request
+from email.mime.text import MIMEText
+
+app = Flask(__name__)
+
+html_template = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kfz-Kontrolle nach DGUV 70</title>
+</head>
+<body>
+    <h2>Kfz-Kontrolle nach DGUV Vorschrift 70</h2>
+    <form method="POST">
+        <label>Fahrzeug-Kennzeichen:</label><br>
+        <input type="text" name="kennzeichen"><br><br>
+
+        <label>Fahrername:</label><br>
+        <input type="text" name="fahrername"><br><br>
+
+        {% for punkt in pruefpunkte %}
+            <b>{{ punkt }}</b><br>
+            In Ordnung? 
+            <select name="ok_{{ loop.index0 }}">
+                <option value="">-</option>
+                <option value="Ja">Ja</option>
+                <option value="Nein">Nein</option>
+            </select><br>
+            Mangelbeschreibung:<br>
+            <input type="text" name="mangel_{{ loop.index0 }}"><br><br>
+        {% endfor %}
+
+        <input type="submit" value="Absenden">
+    </form>
+
+    {% if submitted %}
+        <h3>Kontrolle wurde erfasst und versendet ✅</h3>
+    {% endif %}
+</body>
+</html>
+"""
+
+pruefpunkte = [
+    "Karosserie (äußere Schäden)",
+    "Reifen (Profil, Schäden, Luftdruck)",
+    "Beleuchtung (Front, Heck, Blinker)",
+    "Scheiben & Spiegel (Sauberkeit, Schäden)",
+    "Scheibenwischer & Waschanlage",
+    "Hupe & Warnsignal",
+    "Bremsfunktion (ggf. Probefahrt)",
+    "Flüssigkeitsstände sichtbar (Öl, Wasser, Bremsfl.)",
+    "Warndreieck & Verbandskasten vorhanden",
+    "Zubehör & Ladung gesichert"
+]
+
+def sende_mail(daten):
+    empfaenger = "heinz.greuer@gmail.com"
+    betreff = f"Kfz-Kontrolle: {daten['kennzeichen']} – Fahrer: {daten['fahrername']}"
+    text = f"Kfz-Kontrolle durchgeführt:\n\nFahrzeug: {daten['kennzeichen']}\nFahrer: {daten['fahrername']}\n\n"
+    for eintrag in daten['pruefungsergebnisse']:
+        text += f"- {eintrag['punkt']}: OK = {eintrag['ok']}, Mangel = {eintrag['mangel']}\n"
+
+    msg = MIMEText(text)
+    msg["Subject"] = betreff
+    msg["From"] = "heinz.greuer@gmail.com"  # Eigene Adresse hier eintragen
+    msg["To"] = heinz.greuer@gmail.com
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("heinz.greuer@gmail.com", "Winter#2024")  # Gmail-App-Passwort erforderlich
+            server.send_message(msg)
+    except Exception as e:
+        print("Fehler beim Senden der Mail:", e)
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    submitted = False
+    if request.method == "POST":
+        daten = {
+            "kennzeichen": request.form["kennzeichen"],
+            "fahrername": request.form["fahrername"],
+            "pruefungsergebnisse": []
+        }
+
+        for i, punkt in enumerate(pruefpunkte):
+            ok = request.form.get(f"ok_{i}", "")
+            mangel = request.form.get(f"mangel_{i}", "")
+            daten["pruefungsergebnisse"].append({"punkt": punkt, "ok": ok, "mangel": mangel})
+
+        sende_mail(daten)
+        submitted = True
+
+    return render_template_string(html_template, pruefpunkte=pruefpunkte, submitted=submitted)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
