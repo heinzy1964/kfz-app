@@ -69,7 +69,7 @@ def sende_mail(daten):
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("heinz.greuer@gmail.com", "Winter#2024")  # Gmail-App-Passwort erforderlich
+            server.login("heinz.greuer@gmail.com", "bzhk gsgm wele qdsf")  # Gmail-App-Passwort erforderlich
             server.send_message(msg)
     except Exception as e:
         print("Fehler beim Senden der Mail:", e)
